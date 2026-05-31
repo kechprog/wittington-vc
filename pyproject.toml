@@ -1,0 +1,24 @@
+[project]
+name = "wittington-vc"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "playwright>=1.60.0",
+    "pydantic>=2.13.4",
+]
+
+[project.scripts]
+wittington-vc = "main:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["main", "scraper", "exa_client", "llm_client", "models", "reporting", "scoring"]
+packages = ["db"]
+
+[tool.setuptools.package-dir]
+"" = "src"

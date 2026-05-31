@@ -1,0 +1,12 @@
+# Secrets
+.env
+
+# Local database
+*.db
+output/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
