@@ -17,7 +17,7 @@ from db import (
     save_enrichment,
     save_score,
 )
-from exa_client import enrich_company
+from exa_client import ExaTransientError, enrich_company
 from llm_client import DEFAULT_MODEL
 from models import (
     BusinessModel,
@@ -219,9 +219,14 @@ def _run_enrichment(
 
     _log(f"Enrichment: processing {len(selected)} of {len(pending)} pending rows.")
     resolved = 0
+    retry_later = 0
     if workers <= 1:
         for index, row in enumerate(selected, start=1):
             record = _enrichment_record(row["id"], row["name"])
+            if record is None:
+                retry_later += 1
+                _log(f"  [{index}/{len(selected)}] {row['name']} -> retry_later")
+                continue
             if record.status == EnrichmentStatus.RESOLVED:
                 resolved += 1
             save_enrichment(connection, record)
@@ -236,15 +241,25 @@ def _run_enrichment(
             }
             for index, future in enumerate(as_completed(futures), start=1):
                 record = future.result()
+                if record is None:
+                    retry_later += 1
+                    _log(f"  [{index}/{len(selected)}] {futures[future]} -> retry_later")
+                    continue
                 if record.status == EnrichmentStatus.RESOLVED:
                     resolved += 1
                 save_enrichment(connection, record)
                 _log(f"  [{index}/{len(selected)}] {futures[future]} -> {record.status}")
-    _log(f"Enrichment: saved {len(selected)} rows ({resolved} resolved).")
+    _log(
+        "Enrichment: saved "
+        f"{len(selected) - retry_later} rows ({resolved} resolved, {retry_later} retry later)."
+    )
 
 
-def _enrichment_record(company_id: int, name: str) -> EnrichmentRecord:
-    enrichment = enrich_company(name)
+def _enrichment_record(company_id: int, name: str) -> EnrichmentRecord | None:
+    try:
+        enrichment = enrich_company(name)
+    except ExaTransientError:
+        return None
     if enrichment is None:
         return EnrichmentRecord(company_id=company_id, status=EnrichmentStatus.UNRESOLVED)
     heuristic_confidence = _heuristic_entity_confidence(

@@ -42,6 +42,10 @@ _SUMMARY_QUERY = (
 _FIRMOGRAPHICS_SCHEMA = None
 
 
+class ExaTransientError(RuntimeError):
+    """Raised when Exa fails transiently and the row should remain pending."""
+
+
 def _exa_schema(model: type) -> dict:
     """Flatten a Pydantic JSON schema into the shape Exa's summary accepts.
 
@@ -73,8 +77,9 @@ def _exa_schema(model: type) -> dict:
 def enrich_company(name: str) -> ExaEnrichment | None:
     """Resolve a verbatim company string and return its enrichment, or ``None``.
 
-    Returns ``None`` on resolution failure, validation failure, or API/network
-    error -- the caller decides how to record that.
+    Returns ``None`` only when Exa successfully responds with no company result.
+    Transient API/network failures raise ``ExaTransientError`` so callers do not
+    cache them as real unresolved companies.
     """
     api_key = os.environ.get("EXA_API")
     if not api_key:
@@ -138,19 +143,21 @@ def enrich_company(name: str) -> ExaEnrichment | None:
     )
 
 
-def _open_json_with_retries(request: urllib.request.Request) -> dict | None:
+def _open_json_with_retries(request: urllib.request.Request) -> dict:
     for attempt in range(3):
         try:
             with urllib.request.urlopen(request, timeout=30) as response:
                 return json.load(response)
         except urllib.error.HTTPError as error:
-            if error.code not in {429, 500, 502, 503, 504} or attempt == 2:
-                return None
+            if error.code not in {429, 500, 502, 503, 504}:
+                raise RuntimeError(f"Exa HTTP {error.code}") from error
+            if attempt == 2:
+                raise ExaTransientError(f"Exa transient HTTP {error.code}") from error
         except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
             if attempt == 2:
-                return None
+                raise ExaTransientError("Exa transient network or JSON failure")
         time.sleep(0.8 * (attempt + 1))
-    return None
+    raise ExaTransientError("Exa transient failure")
 
 
 def _fallback_firmographics(name: str, top: dict, url: str) -> Firmographics:

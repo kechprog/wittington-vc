@@ -12,9 +12,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from db import init_db, load_companies, pending_enrichment, pending_scoring, ranked_pipeline
 from db.database import save_enrichment, save_score
-from exa_client import _exa_schema, _fallback_firmographics
+from exa_client import ExaTransientError, _exa_schema, _fallback_firmographics
 from llm_client import judge_fit
-from main import _calibrated_entity_confidence
+from main import _calibrated_entity_confidence, _enrichment_record
 from models import (
     BusinessModel,
     EnrichmentRecord,
@@ -331,6 +331,15 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(profile.source_quality, SourceQuality.LOW)
         self.assertEqual(profile.evidence_urls, "https://example.com")
         self.assertIn("structured exa summary unavailable", (profile.disqualifiers or "").lower())
+
+    def test_transient_exa_failure_stays_pending(self) -> None:
+        with patch("main.enrich_company", side_effect=ExaTransientError("rate limited")):
+            self.assertIsNone(_enrichment_record(1, "Oracle"))
+
+        with patch("main.enrich_company", return_value=None):
+            record = _enrichment_record(1, "UnknownCo")
+        self.assertIsNotNone(record)
+        self.assertEqual(record.status, EnrichmentStatus.UNRESOLVED)
 
     def test_llm_client_validates_json_response(self) -> None:
         os.environ["OPENROUTER_API"] = "test"

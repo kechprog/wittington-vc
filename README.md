@@ -22,20 +22,20 @@ OPENROUTER_API=...
 Smoke test:
 
 ```bash
-uv run wittington-vc --enrich-limit 10 --workers 6
+uv run wittington-vc --enrich-limit 10 --workers 4
 ```
 
 Fresh sample run:
 
 ```bash
-uv run wittington-vc --sample-size 100 --sample-seed 20260609 --full --workers 6 --refresh-enrichment --rescore
+uv run wittington-vc --sample-size 100 --sample-seed 20260609 --full --workers 4 --refresh-enrichment --rescore
 ```
 
 Full fresh run:
 
 ```bash
 rm -f src/db/wittington.db
-uv run wittington-vc --full --workers 6 --rescore
+uv run wittington-vc --full --workers 4 --rescore
 ```
 
 The main outputs are `output/ranked_prospects.html`, `output/ranked_prospects.csv`, and the local SQLite cache at `src/db/wittington.db`.
@@ -57,10 +57,10 @@ The pipeline queries Exa with `category="company"` and asks for structured firmo
 Rows are cached in SQLite, including unresolved rows, so reruns are incremental and auditable. The current enrichment schema is versioned; stale cached rows can be refreshed with:
 
 ```bash
-uv run wittington-vc --refresh-stale-enrichment --full --rescore --workers 6
+uv run wittington-vc --refresh-stale-enrichment --full --rescore --workers 4
 ```
 
-Use `--workers 6` for final runs. In probes, `8` was faster but missed one company that `6` resolved; `6` is the better reliability-speed tradeoff under deadline pressure.
+Use `--workers 4` for final full runs. Smaller probes tolerated `6`, but the sustained full-list run exposed transient Exa misses; transient API failures stay pending for retry rather than being cached as real unresolved companies.
 
 ## Limitations And Future Improvements
 
