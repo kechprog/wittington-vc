@@ -2,6 +2,10 @@
 
 Ranks Manifest attendees for Wittington Ventures by scraping attendee names, resolving companies with Exa, enriching venture-relevant fields, scoring fit, and exporting a sortable prospect list.
 
+## Hosted Report
+
+View the latest generated report at https://kechprog.github.io/wittington-vc/.
+
 ## How To Run
 
 ```bash
