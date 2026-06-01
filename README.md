@@ -66,8 +66,10 @@ uv run wittington-vc --refresh-stale-enrichment --full --rescore --workers 4
 
 Use `--workers 4` for final full runs. Smaller probes tolerated `6`, but the sustained full-list run exposed transient Exa misses; transient API failures stay pending for retry rather than being cached as real unresolved companies.
 
-## Limitations And Future Improvements
+## Future Capabilities
 
-Exa is useful for entity resolution and company summaries, but it is inconsistent on latest round dates, round amounts, named investors, acquired/subsidiary status, traction, and precise buyer/workflow labels. The code treats those fields as helpful signals, not mandatory facts.
+The next UX step would be turning the static ranked table into a weekly review workflow: saved filters, reviewer notes, status tags such as review / pass / intro requested, and side-by-side evidence for why a company ranked highly. I would also add explainable score breakdowns and exportable shortlists so the tool supports both quick triage and partner discussion.
 
-The next improvement should be a targeted second enrichment pass only for high-potential rows with weak evidence: for example, `raw_score >= 80` with low source quality, missing ownership status, or missing funding context. Funding/news APIs and Wittington first-party CRM or meeting data would improve investor, stage, relationship, and strategic-fit signals without over-enriching every attendee.
+For enrichment, I would keep the current cached, staged workflow rather than enriching every field with expensive APIs by default. Exa is useful for first-pass company resolution and structured web evidence; targeted second-pass APIs would be added only for promising or ambiguous companies. Crunchbase or funding/news APIs would improve round, investor, acquisition, and traction signals. People Data Labs, Apollo, or similar company-data APIs could improve employee count, headquarters, domain matching, and ownership fields where web summaries are weak.
+
+The highest-impact improvement would be first-party Wittington data. CRM records would show whether a company is already known, previously passed, or owned by another partner. Meeting notes and email/calendar activity would signal relationship strength and recency. Past deal history would let the ranking learn what Wittington actually acts on, not just what broadly matches the website thesis. Those signals should adjust rank and confidence, while preserving the external evidence trail so reviewers can see both why a company fits and why it matters now.
