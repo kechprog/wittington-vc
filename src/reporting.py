@@ -81,7 +81,7 @@ def _write_csv(rows: list[sqlite3.Row], path: Path) -> None:
         "llm_model",
     ]
     with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer = csv.DictWriter(handle, fieldnames=fields, lineterminator="\n")
         writer.writeheader()
         for rank, row in enumerate(rows, start=1):
             writer.writerow({field: _csv_value(row, field, rank) for field in fields})
@@ -170,23 +170,9 @@ _HTML_TEMPLATE = """<!doctype html>
     }
     .app-shell { display: grid; gap: 12px; }
     .summary-panel {
-      display: grid;
-      grid-template-columns: minmax(320px, 1fr) minmax(460px, 1.4fr);
-      gap: 14px;
-      align-items: stretch;
       border: 1px solid var(--line);
       background: #ffffff;
       padding: 14px;
-    }
-    .summary-copy h2 {
-      margin: 0 0 6px;
-      font-size: 18px;
-      letter-spacing: 0;
-    }
-    .summary-copy p {
-      max-width: 720px;
-      font-size: 13px;
-      line-height: 1.4;
     }
     .status-band {
       display: grid;
@@ -530,7 +516,6 @@ _HTML_TEMPLATE = """<!doctype html>
     }
     @media (max-width: 900px) {
       header, main { padding-left: 16px; padding-right: 16px; }
-      .summary-panel { grid-template-columns: 1fr; }
       .status-band { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
       .control-bar { grid-template-columns: 1fr 1fr; }
       .control-bar input { grid-column: 1 / -1; }
@@ -555,10 +540,6 @@ _HTML_TEMPLATE = """<!doctype html>
   <main>
     <section class="app-shell">
       <div class="summary-panel">
-        <div class="summary-copy">
-          <h2>Ranked by fit, filtered by evidence</h2>
-          <p>Rank is fixed as the canonical order. Column headers narrow the list; they do not reorder it. Use details to inspect the evidence behind a company without leaving the table.</p>
-        </div>
         <div class="status-band">
           <div class="metric"><strong id="metricTotal"></strong><span>Total attendees</span></div>
           <div class="metric"><strong id="metricScored"></strong><span>Enriched and scored</span></div>

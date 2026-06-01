@@ -149,6 +149,8 @@ def _open_json_with_retries(request: urllib.request.Request) -> dict:
             with urllib.request.urlopen(request, timeout=30) as response:
                 return json.load(response)
         except urllib.error.HTTPError as error:
+            if error.code == 402:
+                raise ExaTransientError("Exa quota or billing limit reached") from error
             if error.code not in {429, 500, 502, 503, 504}:
                 raise RuntimeError(f"Exa HTTP {error.code}") from error
             if attempt == 2:

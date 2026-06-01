@@ -5,6 +5,8 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+import urllib.error
+import urllib.request
 from pathlib import Path
 from unittest.mock import patch
 
@@ -12,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from db import init_db, load_companies, pending_enrichment, pending_scoring, ranked_pipeline
 from db.database import save_enrichment, save_score
-from exa_client import ExaTransientError, _exa_schema, _fallback_firmographics
+from exa_client import ExaTransientError, _exa_schema, _fallback_firmographics, _open_json_with_retries
 from llm_client import judge_fit
 from main import _calibrated_entity_confidence, _enrichment_record
 from models import (
@@ -341,6 +343,13 @@ class PipelineTests(unittest.TestCase):
         self.assertIsNotNone(record)
         self.assertEqual(record.status, EnrichmentStatus.UNRESOLVED)
 
+    def test_exa_quota_failure_stays_pending(self) -> None:
+        request = urllib.request.Request("https://api.exa.ai/search")
+        error = urllib.error.HTTPError(request.full_url, 402, "Payment Required", {}, None)
+        with patch("urllib.request.urlopen", side_effect=error):
+            with self.assertRaises(ExaTransientError):
+                _open_json_with_retries(request)
+
     def test_llm_client_validates_json_response(self) -> None:
         os.environ["OPENROUTER_API"] = "test"
         with patch(
@@ -379,6 +388,7 @@ class PipelineTests(unittest.TestCase):
             self.assertIn("Pando.ai", csv_text)
             self.assertIn("raw_score", csv_text)
             self.assertIn("cap_reason", csv_text)
+            self.assertNotIn("\r\n", csv_text)
             html_text = html_path.read_text()
             self.assertIn("Wittington VC Ranked Prospects", html_text)
             self.assertIn("data-category", html_text)
